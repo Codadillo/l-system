@@ -2,24 +2,23 @@
 mod tests;
 
 use serde::de::DeserializeOwned;
-use std::any::Any;
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap};
 use unicode_segmentation::UnicodeSegmentation;
 
-pub trait CallParsed<T> {
-    fn call_parsed(&mut self, args: String) -> Result<(), serde_json::Error>;
+pub trait CallParsed<State, T> {
+    fn call_parsed(&mut self, state: &mut State, args: String) -> Result<(), serde_json::Error>;
 }
 
 macro_rules! call_parsed_impls {
     ( $head:ident, $( $tail:ident, )* ) => {
-        impl<AXSUDYF3412341234UCG, $head, $( $tail ),*> CallParsed<($head, $( $tail ),*)> for AXSUDYF3412341234UCG
+        impl<AXSUDYF3412341234UCG, EUCBNAJHXIZAD81923IX, $head, $( $tail ),*> CallParsed<EUCBNAJHXIZAD81923IX, ($head, $( $tail ),*)> for AXSUDYF3412341234UCG
         where
-            AXSUDYF3412341234UCG: FnMut($head, $( $tail ),*),
+            AXSUDYF3412341234UCG: FnMut(&mut EUCBNAJHXIZAD81923IX, $head, $( $tail ),*),
             $head: DeserializeOwned,
             $( $tail: DeserializeOwned ),*
 
         {
-            fn call_parsed(&mut self, args: String) -> Result<(), serde_json::Error> {
+            fn call_parsed(&mut self, state8348912731: &mut EUCBNAJHXIZAD81923IX, args: String) -> Result<(), serde_json::Error> {
                 let mut graphemes: Vec<&str> = args.as_str().graphemes(true).collect();
                 *graphemes.first_mut().unwrap() = "[";
                 *graphemes.last_mut().unwrap() = "]";
@@ -27,19 +26,19 @@ macro_rules! call_parsed_impls {
                 #[allow(non_snake_case)]
                 let ($head, $( $tail ),*): ($head, $( $tail ),*) = serde_json::from_str(&graphemes.into_iter().collect::<String>())?;
 
-                (self)($head, $( $tail ),*);
+                (self)(state8348912731, $head, $( $tail ),*);
                 Ok(())
             }
         }
         call_parsed_impls!($( $tail, )*);
     };
     () => {
-        impl<F> CallParsed<()> for F
+        impl<State, F> CallParsed<State, ()> for F
             where
-                F: FnMut()
+                F: FnMut(&mut State)
         {
-            fn call_parsed(&mut self, _: String) -> Result<(), serde_json::Error> {
-                (self)();
+            fn call_parsed(&mut self, state: &mut State, _: String) -> Result<(), serde_json::Error> {
+                (self)(state);
                 Ok(())
             }
         }
@@ -107,21 +106,27 @@ impl LSystem {
     }
 }
 
-pub struct LSystemExecutor {
+pub struct LSystemExecutor<State> {
     execution_rules: HashMap<String, Box<dyn Any>>,
+    state: State,
 }
 
-impl LSystemExecutor {
-    pub fn new() -> Self {
+impl<State> LSystemExecutor<State> {
+    pub fn new(state: State) -> Self {
         Self {
             execution_rules: HashMap::new(),
+            state,
         }
+    }
+
+    pub fn state_mut(&mut self) -> &mut State {
+        &mut self.state
     }
 
     pub fn register_execution_rule<T>(
         &mut self,
         token: String,
-        rule: impl 'static + CallParsed<T>,
+        rule: impl 'static + CallParsed<State, T>,
     ) {
         self.execution_rules
             .insert(token, Box::new(rule) as Box<dyn Any>);
