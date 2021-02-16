@@ -3,7 +3,6 @@ mod tests;
 
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, marker::PhantomData};
-use unicode_segmentation::UnicodeSegmentation;
 
 pub trait CallParsed<State, T> {
     fn call_parsed(&mut self, state: &mut State, args: String) -> Result<(), serde_json::Error>;
@@ -33,13 +32,13 @@ macro_rules! call_parsed_impls {
             $( $tail: DeserializeOwned ),*
 
         {
-            fn call_parsed(&mut self, state8348912731: &mut EUCBNAJHXIZAD81923IX, args: String) -> Result<(), serde_json::Error> {              
-                let mut graphemes: Vec<&str> = args.as_str().graphemes(true).collect();
-                graphemes.first_mut().map(|g| *g = "[");
-                graphemes.last_mut().map(|g| *g = "]");
+            fn call_parsed(&mut self, state8348912731: &mut EUCBNAJHXIZAD81923IX, mut args: String) -> Result<(), serde_json::Error> {
+                args = args.chars().skip(1).take(args.len() - 1).collect();
+                args.insert(0, '[');
+                args.push(']');
 
                 #[allow(non_snake_case)]
-                let ($head, $( $tail ),*): ($head, $( $tail ),*) = serde_json::from_str(&graphemes.into_iter().collect::<String>())?;
+                let ($head, $( $tail ),*): ($head, $( $tail ),*) = serde_json::from_str(&args)?;
 
                 (self)(state8348912731, $head, $( $tail ),*);
                 Ok(())
@@ -134,8 +133,8 @@ pub struct LSystemExecutor<State> {
 impl<State: 'static> LSystemExecutor<State> {
     pub fn new(state: State) -> Self {
         Self {
-            execution_rules: vec![],
             state,
+            execution_rules: vec![]
         }
     }
 
@@ -155,7 +154,6 @@ impl<State: 'static> LSystemExecutor<State> {
 
     pub fn execute(&mut self, system: &LSystem) -> Result<(), serde_json::Error> {
         let mut instructions = system.axiom.clone();
-
         while instructions.len() != 0 {
             if let Some((token, rule)) = self
                 .execution_rules
@@ -171,7 +169,7 @@ impl<State: 'static> LSystemExecutor<State> {
                 for i in 0..instructions.len() {
                     let res = rule.call_parsed(&mut self.state, instructions[..=i].to_string());
                     if res.is_ok() {
-                        let _: String = instructions.drain(..i).collect();
+                        let _: String = instructions.drain(..=i).collect();
                         break;
                     }
                     if i == instructions.len() - 1 {

@@ -44,7 +44,26 @@ fn test_basic_executor() {
         state.2 += if state.0 > state.1 { c } else { m * c }
     });
 
-    executor.execute(&LSystem::new("AAC(3, 0)B(6)B(1)AC(3, 2)".into())).unwrap();
+    executor
+        .execute(&LSystem::new("AAC(3, 0)B(6)B(1)AC(3, 2)".into()))
+        .unwrap();
 
     assert_eq!(executor.state, (3, 7, 9));
+}
+
+#[test]
+fn test_non_primitive_executor() {
+    let mut executor = LSystemExecutor::new(0);
+
+    executor.register_execution_rule("A".into(), |state: &mut i32, complex: Vec<(i32, f64)>| {
+        *state += complex.into_iter().map(|(a, b)| a as f64 * b).sum::<f64>() as i32
+    });
+
+    executor
+        .execute(&LSystem::new(
+            "A([[1, 2], [3, 4.1]])XXXXA([])XA([[0, 4], [1, 0.1]])XA([[3, 1.2]])".into(),
+        ))
+        .unwrap();
+
+    assert_eq!(executor.state, 17);
 }
