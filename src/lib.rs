@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests;
+pub mod turtle;
+pub mod default_execution_rules;
 
 use serde::de::DeserializeOwned;
-use std::{collections::HashMap, marker::PhantomData};
+use std::marker::PhantomData;
 
 pub trait CallParsed<State, T> {
     fn call_parsed(&mut self, state: &mut State, args: String) -> Result<(), serde_json::Error>;
@@ -64,17 +66,17 @@ call_parsed_impls!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
 
 pub struct LSystem {
     pub axiom: String,
-    pub production_rules: HashMap<String, Box<dyn FnMut() -> String>>,
+    pub production_rules: Vec<(String, Box<dyn FnMut() -> String>)>,
 }
 
 impl LSystem {
     pub fn new(axiom: String) -> Self {
-        Self::with_rules(axiom, HashMap::new())
+        Self::with_rules(axiom, vec![])
     }
 
     pub fn with_rules(
         axiom: String,
-        production_rules: HashMap<String, Box<dyn FnMut() -> String>>,
+        production_rules: Vec<(String, Box<dyn FnMut() -> String>)>,
     ) -> Self {
         Self {
             axiom,
@@ -87,7 +89,7 @@ impl LSystem {
         token: String,
         replacement: impl 'static + FnMut() -> String,
     ) {
-        self.production_rules.insert(token, Box::new(replacement));
+        self.production_rules.push((token, Box::new(replacement)));
     }
 
     pub fn step(&mut self) {
@@ -99,7 +101,7 @@ impl LSystem {
 
             for (i, part) in &mut old_axiom {
                 for j in part
-                    .match_indices(token)
+                    .match_indices(&*token)
                     .map(|p| p.0)
                     .collect::<Vec<_>>()
                     .into_iter()
@@ -134,8 +136,12 @@ impl<State: 'static> LSystemExecutor<State> {
     pub fn new(state: State) -> Self {
         Self {
             state,
-            execution_rules: vec![]
+            execution_rules: vec![],
         }
+    }
+
+    pub fn used_tokens(&self) -> Vec<&str> {
+        self.execution_rules.iter().map(|a| a.0.as_str()).collect()
     }
 
     pub fn register_execution_rule<T: 'static>(
