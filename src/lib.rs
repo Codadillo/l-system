@@ -84,7 +84,7 @@ impl LSystem {
         }
     }
 
-    pub fn register_production_rule(
+    pub fn register_rule(
         &mut self,
         token: String,
         replacement: impl 'static + FnMut() -> String,
@@ -144,7 +144,7 @@ impl<State: 'static> LSystemExecutor<State> {
         self.execution_rules.iter().map(|a| a.0.as_str()).collect()
     }
 
-    pub fn register_execution_rule<T: 'static>(
+    pub fn register_rule<T: 'static>(
         &mut self,
         token: String,
         rule: impl 'static + CallParsed<State, T>,
